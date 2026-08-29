@@ -55,27 +55,32 @@ th{background:#eee}
 let draws=[];
 
 function parseHistory(){
-  return document.getElementById('history').value.split(/\\n+/).map(line=>{
-    const a=line.split(/[,\\s•-]+/).map(Number).filter(Number.isInteger);
+  return document.getElementById('history').value.split(/\n+/).map(line=>{
+    const a=line.split(/[,\s•-]+/).map(Number).filter(Number.isInteger);
     return [...new Set(a)].filter(n=>n>=1&&n<=35).slice(0,5);
   }).filter(a=>a.length===5);
 }
+
 function pool(ds,n){
   const s=new Set();
   ds.slice(Math.max(0,ds.length-n)).forEach(d=>d.forEach(x=>s.add(x)));
   return s;
 }
+
 function master(ds){
   const s=new Set();
   [4,5,6,7].forEach(n=>pool(ds,n).forEach(x=>s.add(x)));
   return s;
 }
+
 function overlap(a,b){return a.filter(x=>b.has(x)).length}
+
 function diversityLabel(size){
   if(size<=22)return 'Compressed';
   if(size<=24)return 'Normal';
   return 'Expanded';
 }
+
 function continuityCount(ds){
   const target=ds[ds.length-1];
   const layers=[];
@@ -85,12 +90,14 @@ function continuityCount(ds){
   }
   return layers;
 }
+
 function continuityLabel(c){
   const active=c.filter(x=>x>0).length;
   if(active===0)return 'Weak';
   if(active===1)return 'Moderate';
   return 'Strong';
 }
+
 function classify(ds){
   const m=master(ds.slice(0,-1));
   const target=ds[ds.length-1];
@@ -100,6 +107,7 @@ function classify(ds){
   const c=continuityCount(ds);
   return {m,target,found,gaps,seven,diversity:diversityLabel(seven),c,continuity:continuityLabel(c)};
 }
+
 function fmt(a){return a.join(' • ')}
 
 function renderCurrent(){
@@ -139,25 +147,78 @@ function walkForward(){
       const d=prior[prior.length-k];
       return overlap(target,new Set(d));
     });
-    rows.push({i:i+1,draw:target,found,gaps,seven,diversity:diversityLabel(seven),continuity:continuityLabel(c),c});
+    rows.push({
+      i:i+1,
+      draw:target,
+      found,
+      gaps,
+      seven,
+      diversity:diversityLabel(seven),
+      continuity:continuityLabel(c),
+      c
+    });
   }
+
   const cells={};
+
   rows.forEach(r=>{
     const key=r.diversity+'|'+r.continuity;
     if(!cells[key])cells[key]={n:0,h:0,f4:0,f5:0,g:0};
-    const x=cells[key]; x.n++;x.h+=r.found;x.g+=r.gaps;
-    if(r.found>=4)x.f4++; if(r.found===5)x.f5++;
+    const x=cells[key];
+    x.n++;
+    x.h+=r.found;
+    x.g+=r.gaps;
+    if(r.found>=4)x.f4++;
+    if(r.found===5)x.f5++;
   });
+
   const order=['Compressed','Normal','Expanded'];
   const cont=['Weak','Moderate','Strong'];
-  document.getElementById('matrix').innerHTML=order.flatMap(d=>cont.map(c=>{
-    const x=cells[d+'|'+c]||{n:0,h:0,f4:0,f5:0,g:0};
-    return `<tr><td>${d}</td><td>${c}</td><td>${x.n}</td><td>${x.n?(x.h/x.n).toFixed(3):'—'}</td><td>${x.f4}</td><td>${x.f5}</td><td>${x.n?(x.g/x.n).toFixed(3):'—'}</td></tr>`;
-  })).join('');
+
+  document.getElementById('matrix').innerHTML=
+    order.flatMap(d=>cont.map(c=>{
+      const x=cells[d+'|'+c]||{n:0,h:0,f4:0,f5:0,g:0};
+      return `<tr>
+        <td>${d}</td>
+        <td>${c}</td>
+        <td>${x.n}</td>
+        <td>${x.n?(x.h/x.n).toFixed(3):'—'}</td>
+        <td>${x.f4}</td>
+        <td>${x.f5}</td>
+        <td>${x.n?(x.g/x.n).toFixed(3):'—'}</td>
+      </tr>`;
+    })).join('');
+
   document.getElementById('results').innerHTML=`
     <p><b>Eligible targets:</b> ${rows.length}</p>
-    <table><thead><tr><th>#</th><th>Target</th><th>4567 Hits</th><th>Gaps</th><th>7-Draw Unique</th><th>Regime</th><th>Continuity</th><th>D−1/D−2/D−3</th></tr></thead>
-    <tbody>${rows.slice().reverse().map(r=>`<tr><td>${r.i}</td><td class="mono">${fmt(r.draw)}</td><td>${r.found}/5</td><td>${r.gaps}</td><td>${r.seven}</td><td>${r.diversity}</td><td>${r.continuity}</td><td>${r.c.join('/')}</td></tr>`).join('')}</tbody></table>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Target</th>
+          <th>4567 Hits</th>
+          <th>Gaps</th>
+          <th>7-Draw Unique</th>
+          <th>Regime</th>
+          <th>Continuity</th>
+          <th>D−1/D−2/D−3</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.slice().reverse().map(r=>`
+          <tr>
+            <td>${r.i}</td>
+            <td class="mono">${fmt(r.draw)}</td>
+            <td>${r.found}/5</td>
+            <td>${r.gaps}</td>
+            <td>${r.seven}</td>
+            <td>${r.diversity}</td>
+            <td>${r.continuity}</td>
+            <td>${r.c.join('/')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
   `;
 }
 
@@ -167,6 +228,7 @@ function loadHistory(){
   renderCurrent();
   if(draws.length>=8)walkForward();
 }
+
 function clearHistory(){
   draws=[];
   document.getElementById('history').value='';
