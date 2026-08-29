@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>4567 Regime & Continuity Engine</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:1000px;margin:0 auto;padding:20px;background:#f5f5f5;color:#222}
+.card{background:#fff;border:1px solid #ccc;border-radius:10px;padding:16px;margin:14px 0}
+textarea{width:100%;min-height:180px;font:14px monospace;box-sizing:border-box}
+button{padding:10px 16px;margin:5px 5px 5px 0;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.stat{border:1px solid #ddd;border-radius:8px;padding:12px;background:#fafafa}
+.big{font-size:24px;font-weight:bold}
+.good{font-weight:bold}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ddd;padding:8px;text-align:center}
+th{background:#eee}
+.mono{font-family:monospace}
+</style>
+</head>
+<body>
+<h1>4567 Regime & Continuity Engine</h1>
+<p><b>Separate research engine — Connecticut Cash 5.</b> This engine classifies the current seven-draw environment. It does not predict or guarantee lottery results.</p>
+
+<div class="card">
+<h2>Draw History</h2>
+<p>Enter one draw per line. Example: <span class="mono">4, 6, 10, 33, 35</span></p>
+<textarea id="history" placeholder="Enter Connecticut Cash 5 draws, oldest to newest"></textarea>
+<br>
+<button onclick="loadHistory()">Load History</button>
+<button onclick="clearHistory()">Clear</button>
+<span id="status"></span>
+</div>
+
+<div class="card">
+<h2>4567 Regime — Current Target</h2>
+<div id="current">Load at least 8 draws to evaluate a target.</div>
+</div>
+
+<div class="card">
+<h2>Diversity × Continuity Research Matrix</h2>
+<table>
+<thead><tr><th>Diversity</th><th>Continuity</th><th>Targets</th><th>Avg 4567 Hits</th><th>4/5+</th><th>5/5</th><th>Avg Gaps</th></tr></thead>
+<tbody id="matrix"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>Walk-Forward Results</h2>
+<div id="results">Load history to run the walk-forward.</div>
+</div>
+
+<script>
+let draws=[];
+
+function parseHistory(){
+  return document.getElementById('history').value.split(/\\n+/).map(line=>{
+    const a=line.split(/[,\\s•-]+/).map(Number).filter(Number.isInteger);
+    return [...new Set(a)].filter(n=>n>=1&&n<=35).slice(0,5);
+  }).filter(a=>a.length===5);
+}
+function pool(ds,n){
+  const s=new Set();
+  ds.slice(Math.max(0,ds.length-n)).forEach(d=>d.forEach(x=>s.add(x)));
+  return s;
+}
+function master(ds){
+  const s=new Set();
+  [4,5,6,7].forEach(n=>pool(ds,n).forEach(x=>s.add(x)));
+  return s;
+}
+function overlap(a,b){return a.filter(x=>b.has(x)).length}
+function diversityLabel(size){
+  if(size<=22)return 'Compressed';
+  if(size<=24)return 'Normal';
+  return 'Expanded';
+}
+function continuityCount(ds){
+  const target=ds[ds.length-1];
+  const layers=[];
+  for(let k=1;k<=3;k++){
+    const prior=ds[ds.length-1-k];
+    layers.push(overlap(target,new Set(prior)));
+  }
+  return layers;
+}
+function continuityLabel(c){
+  const active=c.filter(x=>x>0).length;
+  if(active===0)return 'Weak';
+  if(active===1)return 'Moderate';
+  return 'Strong';
+}
+function classify(ds){
+  const m=master(ds.slice(0,-1));
+  const target=ds[ds.length-1];
+  const found=target.filter(x=>m.has(x));
+  const gaps=target.filter(x=>!m.has(x));
+  const seven=pool(ds.slice(0,-1),7).size;
+  const c=continuityCount(ds);
+  return {m,target,found,gaps,seven,diversity:diversityLabel(seven),c,continuity:continuityLabel(c)};
+}
+function fmt(a){return a.join(' • ')}
+
+function renderCurrent(){
+  if(draws.length<8){
+    document.getElementById('current').innerHTML='Load at least 8 valid draws to evaluate a target.';
+    return;
+  }
+  const r=classify(draws);
+  document.getElementById('current').innerHTML=`
+    <div class="grid">
+      <div class="stat"><b>Target</b><div class="mono">${fmt(r.target)}</div></div>
+      <div class="stat"><b>7-Draw Unique</b><div class="big">${r.seven}</div></div>
+      <div class="stat"><b>Diversity</b><div class="big">${r.diversity}</div></div>
+      <div class="stat"><b>Continuity</b><div class="big">${r.continuity}</div></div>
+      <div class="stat"><b>D−1 / D−2 / D−3</b><div class="big">${r.c.join(' / ')}</div></div>
+      <div class="stat"><b>4567 Containment</b><div class="big">${r.found.length}/5</div></div>
+    </div>
+    <h3>4567 Master Pool (${r.m.size})</h3>
+    <p class="mono">${fmt([...r.m].sort((a,b)=>a-b))}</p>
+    <p><b>Found:</b> ${fmt(r.found)||'None'}</p>
+    <p><b>Missing / Gap:</b> ${fmt(r.gaps)||'None'}</p>
+    <h3>Current Structural State</h3>
+    <p><b>${r.diversity} + ${r.continuity}</b></p>
+  `;
+}
+
+function walkForward(){
+  const rows=[];
+  for(let i=7;i<draws.length;i++){
+    const prior=draws.slice(0,i);
+    const target=draws[i];
+    const m=master(prior);
+    const seven=pool(prior,7).size;
+    const found=target.filter(x=>m.has(x)).length;
+    const gaps=5-found;
+    const c=[1,2,3].map(k=>{
+      const d=prior[prior.length-k];
+      return overlap(target,new Set(d));
+    });
+    rows.push({i:i+1,draw:target,found,gaps,seven,diversity:diversityLabel(seven),continuity:continuityLabel(c),c});
+  }
+  const cells={};
+  rows.forEach(r=>{
+    const key=r.diversity+'|'+r.continuity;
+    if(!cells[key])cells[key]={n:0,h:0,f4:0,f5:0,g:0};
+    const x=cells[key]; x.n++;x.h+=r.found;x.g+=r.gaps;
+    if(r.found>=4)x.f4++; if(r.found===5)x.f5++;
+  });
+  const order=['Compressed','Normal','Expanded'];
+  const cont=['Weak','Moderate','Strong'];
+  document.getElementById('matrix').innerHTML=order.flatMap(d=>cont.map(c=>{
+    const x=cells[d+'|'+c]||{n:0,h:0,f4:0,f5:0,g:0};
+    return `<tr><td>${d}</td><td>${c}</td><td>${x.n}</td><td>${x.n?(x.h/x.n).toFixed(3):'—'}</td><td>${x.f4}</td><td>${x.f5}</td><td>${x.n?(x.g/x.n).toFixed(3):'—'}</td></tr>`;
+  })).join('');
+  document.getElementById('results').innerHTML=`
+    <p><b>Eligible targets:</b> ${rows.length}</p>
+    <table><thead><tr><th>#</th><th>Target</th><th>4567 Hits</th><th>Gaps</th><th>7-Draw Unique</th><th>Regime</th><th>Continuity</th><th>D−1/D−2/D−3</th></tr></thead>
+    <tbody>${rows.slice().reverse().map(r=>`<tr><td>${r.i}</td><td class="mono">${fmt(r.draw)}</td><td>${r.found}/5</td><td>${r.gaps}</td><td>${r.seven}</td><td>${r.diversity}</td><td>${r.continuity}</td><td>${r.c.join('/')}</td></tr>`).join('')}</tbody></table>
+  `;
+}
+
+function loadHistory(){
+  draws=parseHistory();
+  document.getElementById('status').textContent=` Loaded ${draws.length} valid draws.`;
+  renderCurrent();
+  if(draws.length>=8)walkForward();
+}
+function clearHistory(){
+  draws=[];
+  document.getElementById('history').value='';
+  document.getElementById('status').textContent='';
+  document.getElementById('current').innerHTML='Load at least 8 draws to evaluate a target.';
+  document.getElementById('matrix').innerHTML='';
+  document.getElementById('results').innerHTML='Load history to run the walk-forward.';
+}
+</script>
+</body>
+</html>
